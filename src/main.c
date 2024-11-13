@@ -1,82 +1,106 @@
-/**
- * main.h
- * Created on Aug, 23th 2023
- * Author: Tiago Barros
- * Based on "From C to C++ course - 2002"
-*/
-
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "screen.h"
 #include "keyboard.h"
 #include "timer.h"
 
-int x = 34, y = 12;
-int incX = 1, incY = 1;
+int playerX = 34, playerY = MAXY - 2;  // Posição inicial do jogador
+int numCars = 5;                       // Número de "carros" ou obstáculos (aumentado para 5)
+int carX[5] = {15, 35, 55, 25, 45};    // Novas posições iniciais dos carros
+int centerY = MAXY / 2;                // Linha central onde os carros vão passar
+int carSpeed[5] = {1, -1, 1, -1, 1};   // Direções dos carros (1 = direita, -1 = esquerda)
 
-void printHello(int nextX, int nextY)
-{
-    screenSetColor(CYAN, DARKGRAY);
+// Função para desenhar o jogador
+void drawPlayer(int x, int y) {
+    screenSetColor(GREEN, DARKGRAY);
     screenGotoxy(x, y);
-    printf("           ");
-    x = nextX;
-    y = nextY;
-    screenGotoxy(x, y);
-    printf("Hello World");
+    printf("O");
 }
 
-void printKey(int ch)
-{
-    screenSetColor(YELLOW, DARKGRAY);
-    screenGotoxy(35, 22);
-    printf("Key code :");
-
-    screenGotoxy(34, 23);
-    printf("            ");
-    
-    if (ch == 27) screenGotoxy(36, 23);
-    else screenGotoxy(39, 23);
-
-    printf("%d ", ch);
-    while (keyhit())
-    {
-        printf("%d ", readch());
+// Função para desenhar os carros
+void drawCars() {
+    screenSetColor(RED, DARKGRAY);
+    for (int i = 0; i < numCars; i++) {
+        screenGotoxy(carX[i], centerY);
+        printf("===");
     }
 }
 
-int main() 
-{
-    static int ch = 0;
+// Função para limpar o jogador na posição anterior
+void clearPlayer(int x, int y) {
+    screenGotoxy(x, y);
+    printf(" ");
+}
 
+// Função para atualizar a posição dos carros
+void updateCars() {
+    for (int i = 0; i < numCars; i++) {
+        screenGotoxy(carX[i], centerY);
+        printf("   ");  // Limpa a posição anterior do carro
+        carX[i] += carSpeed[i];
+        if (carX[i] >= MAXX - 3 || carX[i] <= 1) {
+            carSpeed[i] = -carSpeed[i];  // Inverte a direção ao atingir as bordas
+        }
+    }
+}
+
+// Função para verificar colisão entre jogador e carro
+int checkCollision() {
+    for (int i = 0; i < numCars; i++) {
+        if (playerY == centerY && playerX >= carX[i] && playerX <= carX[i] + 2) {
+            return 1;  // Colisão detectada
+        }
+    }
+    return 0;
+}
+
+// Função para mover o jogador de acordo com a entrada do usuário
+void movePlayer(int key) {
+    clearPlayer(playerX, playerY);  // Limpa a posição anterior do jogador
+    if (key == 'w' && playerY > 0) playerY--;         // Move para cima
+    if (key == 's' && playerY < MAXY - 1) playerY++;  // Move para baixo
+    if (key == 'a' && playerX > 0) playerX--;         // Move para esquerda
+    if (key == 'd' && playerX < MAXX - 1) playerX++;  // Move para direita
+    drawPlayer(playerX, playerY);
+}
+
+int main() {
+    int ch = 0;
     screenInit(1);
     keyboardInit();
-    timerInit(50);
+    timerInit(100);
 
-    printHello(x, y);
+    drawPlayer(playerX, playerY);
     screenUpdate();
+    drawCars();  // Desenha os carros inicialmente
 
-    while (ch != 10) //enter
-    {
-        // Handle user input
-        if (keyhit()) 
-        {
+    while (1) {
+        if (keyhit()) {
             ch = readch();
-            printKey(ch);
+            if (ch == 27) break;  // Tecla Esc para sair
+            movePlayer(ch);
             screenUpdate();
         }
 
-        // Update game state (move elements, verify collision, etc)
-        if (timerTimeOver() == 1)
-        {
-            int newX = x + incX;
-            if (newX >= (MAXX -strlen("Hello World") -1) || newX <= MINX+1) incX = -incX;
-            int newY = y + incY;
-            if (newY >= MAXY-1 || newY <= MINY+1) incY = -incY;
-
-            printKey(ch);
-            printHello(newX, newY);
-
+        if (timerTimeOver()) {
+            updateCars();
+            drawCars();
+            if (checkCollision()) {
+                screenGotoxy(30, MAXY / 2);
+                screenSetColor(LIGHTRED, BLACK);
+                printf("Game Over! Pressione ESC para sair.");
+                break;
+            }
             screenUpdate();
+        }
+
+        if (playerY == 1) {  // Verifica se o jogador chegou ao topo
+            screenGotoxy(30, MAXY / 2);
+            screenSetColor(LIGHTGREEN, BLACK);
+            printf("Você Venceu! Pressione ESC para sair.");
+            break;
         }
     }
 
