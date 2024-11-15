@@ -14,3 +14,13 @@ void timerUpdateTimer(int valueMilliSec);
 int timerTimeOver();
 
 void timerPrint();
+
+#ifndef TIMER_H
+#define TIMER_H
+
+void timerInit(int intervalo);
+void timerDestroy();
+int timerTimeOver();
+void timerDelay(int segundos); 
+
+#endif
